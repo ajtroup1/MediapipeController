@@ -1,3 +1,4 @@
+# This file just contains the minimum code required for hand tracking using mediapipe and opencv
 import cv2
 import mediapipe as mp
 import time
@@ -32,6 +33,13 @@ while True:
 
     if results.multi_hand_landmarks: # If there are any hands detected on the screen
         for handLms in results.multi_hand_landmarks: # The default params for instantiating Hands() obj allows for 2 hands
+            for id, lm in enumerate(handLms.landmark):
+                # The landmarks are returned as a ratio of the h, w values with decimal places. That must be converted to RGB 'coordinates'
+                h, w, c = img.shape
+                cx, cy = int(lm.x * w), int(lm.y * h)
+                print(f"{id}: ({cx}, {cy})")
+                if id == 0 or id == 4 or id == 8 or id == 12 or id == 16 or id == 20:
+                    cv2.circle(img, (cx, cy), 10, (255, 0, 0), cv2.FILLED)
             # Draws the points for each landmark on the hand as well as the connections between them
             mpDraw.draw_landmarks(img, handLms, mpHands.HAND_CONNECTIONS)
 
