@@ -23,10 +23,15 @@ cTime = 0
 screen_w, screen_h = pyautogui.size()
 
 # Frame skipping parameters
-# Performance was an issue. Specifically because of the pyautogui calls to moveTo
-# TODO: figure out other performance enhancers
 skip_frames = 3  # Number of frames to skip before updating cursor
 frame_count = 0  # Counter to keep track of frames
+
+# Click state
+thumb_was_up = False
+index_was_up = False
+
+# Sensitivity factor (adjust this value as needed)
+sensitivity = 3.0
 
 # Main camera read loop
 while True:
@@ -36,17 +41,48 @@ while True:
     
     if len(lmList) != 0:
         fingers = detector.fingers_up(lmList)
+        thumb_up = fingers[0]  # Assume index 0 is the thumb
+        index_up = fingers[1]  # Assume index 1 is the index finger
+
         if all(fingers):
             # Update cursor only if the frame is not skipped
             if frame_count % (skip_frames + 1) == 0:
                 cv2.putText(img, "5 Fingers Up", (10, 70), cv2.FONT_HERSHEY_PLAIN, 3, (0, 255, 0), 3)
                 
-                # Flip the x-axis movement. Was mirrored by default (ew)
-                cursor_x = np.interp(lmList[8][1], [0, cam_w], [screen_w, 0])
+                # Calculate cursor position
+                cursor_x = np.interp(lmList[8][1], [0, cam_w], [0, screen_w])
                 cursor_y = np.interp(lmList[8][2], [0, cam_h], [0, screen_h])
+
+                # Flip horizontal direction
+                cursor_x = screen_w - cursor_x
+                
+                # Apply sensitivity factor
+                cursor_x *= sensitivity
+                cursor_y *= sensitivity
+                
+                # Bound cursor position within screen dimensions
+                cursor_x = np.clip(cursor_x, 0, screen_w - 1)
+                cursor_y = np.clip(cursor_y, 0, screen_h - 1)
+                
                 pyautogui.moveTo(cursor_x, cursor_y)
         else:
             cv2.putText(img, "Less than 5 Fingers", (10, 70), cv2.FONT_HERSHEY_PLAIN, 3, (0, 0, 255), 3)
+
+            if not index_up and index_was_up:
+                pyautogui.click()
+                cv2.putText(img, "Left Click!", (10, 120), cv2.FONT_HERSHEY_PLAIN, 3, (255, 0, 0), 3)
+                index_was_up = False  # Reset the state after left-clicking
+
+            if not thumb_up and thumb_was_up:
+                pyautogui.rightClick()
+                cv2.putText(img, "Right Click!", (10, 120), cv2.FONT_HERSHEY_PLAIN, 3, (0, 255, 255), 3)
+                thumb_was_up = False  # Reset the state after right-clicking
+
+            # Update thumb and index states
+            if index_up:
+                index_was_up = True
+            if thumb_up:
+                thumb_was_up = True
 
     # Update frame counter and calculate FPS
     frame_count += 1
@@ -55,7 +91,8 @@ while True:
     pTime = cTime
     cv2.putText(img, f"FPS: {int(fps)}", (7, 45), cv2.FONT_HERSHEY_PLAIN, 3, (0, 255, 0), 2)
 
-    cv2.imshow("Video Capture", img)
+    flipped_img = cv2.flip(img, 1)
+    cv2.imshow("Video Capture", flipped_img)
     if cv2.waitKey(1) & 0xFF == 27: # Can exit with the "ESC" key
         break
 
