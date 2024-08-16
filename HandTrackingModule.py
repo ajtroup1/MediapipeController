@@ -1,3 +1,7 @@
+"""""
+Core class for the hand tracker
+To be implemented in controller functions
+"""""
 import cv2
 import mediapipe as mp
 import time
@@ -44,6 +48,24 @@ class HandDetector():
                     cv2.circle(img, (cx, cy), 15, (255, 0, 255), cv2.FILLED)
 
         return lmList
+    
+    def fingers_up(self, lmList):
+        fingers = []
+
+        # Thumb (adjusted for left or right hand)
+        if lmList[4][1] > lmList[3][1]:  # Right hand
+            fingers.append(1)
+        else:
+            fingers.append(0)
+
+        # 4 Fingers
+        for id in range(8, 21, 4):
+            if lmList[id][2] < lmList[id - 2][2]:
+                fingers.append(1)
+            else:
+                fingers.append(0)
+
+        return fingers
                 
 def main():
     # Setting up the camera
